@@ -34,7 +34,7 @@ namespace SocketServer
         {
             byte[] bytes = new byte[BufferSize];
 
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+            IPHostEntry ipHostInfo = Dns.Resolve(Dns.GetHostName());
             IPAddress ipAddress = ipHostInfo.AddressList.First(entry => !entry.IsIPv6LinkLocal);
 
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
@@ -72,17 +72,18 @@ namespace SocketServer
             //byte[] replyData = Encoding.ASCII.GetBytes(content);
 
             var parser = new GetParser(content);
-            var strings = parser.GetRequestTargetPath();
+
+
+            var response = parser.ParseHttpGet();
+
             // Begin sending the data to the remote device.
             //var replyString = String.Join(" - ", strings).GetBytes();
-            var replyStringBytes =
-                "<HTML>\r\n<HEAD>\r\n<TITLE>Hello World in HTML</TITLE>\r\n</HEAD>\r\n<BODY>\r\n<CENTER><H1>Hello World!</H1></CENTER>\r\n</BODY>\r\n</HTML>"
-                    .GetBytes();
-
-            byte[] imageArray = System.IO.File.ReadAllBytes(@"F:\7th term timetable.jpg");
+            
 
 
-            handler.BeginSend(replyStringBytes, 0, replyStringBytes.Length, 0, CompleteSend, handler);
+
+
+            handler.BeginSend(response, 0, response.Length, 0, CompleteSend, handler);
         }
 
         // Invoked when reading request is complete
@@ -130,6 +131,7 @@ namespace SocketServer
                 int bytesSent = handler.EndSend(ar);
                 Console.WriteLine($"Sent {bytesSent} bytes to client.");
 
+                // TODO HTTP 1.1 will allow presistent connections
                 handler.Shutdown(SocketShutdown.Both);
                 handler.Close();
             }

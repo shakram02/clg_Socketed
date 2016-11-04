@@ -7,8 +7,8 @@
     <ProjectGuid>{565D83DF-866F-40DA-828D-6BFD64AAB583}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SocketsBasic</RootNamespace>
-    <AssemblyName>SocketsBasic</AssemblyName>
+    <RootNamespace>SocketClient</RootNamespace>
+    <AssemblyName>SocketClient</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SocketClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

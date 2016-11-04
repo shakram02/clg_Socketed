@@ -1,15 +1,12 @@
 ﻿using System;
 
-namespace SocketClient
+namespace SocketServer
 {
     class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Press any key to start the client...");
-            Console.ReadKey();
-
-            SocketClient.StartConnect();
+            SocketServer.StartListening();
 
             Console.WriteLine("Press ENTER to continue...");
             Console.ReadKey();

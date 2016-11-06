@@ -3,9 +3,7 @@ using System.Text;
 
 namespace SocketServer
 {
-    /// <summary>
-    /// Class to handle request state and data
-    /// </summary>
+    /// <summary>Class to handle request state and data</summary>
     public class StateObject
     {
         // Size of receive buffer.

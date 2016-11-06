@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -15,7 +14,6 @@ namespace SocketServer
 
         private const int BufferSize = 1024;
         private const int MaxConnectionsInQueue = 10;
-        private const int port = 11000;
 
         public static void AcceptRequestCallback(IAsyncResult ar)
         {
@@ -30,7 +28,7 @@ namespace SocketServer
             handler.BeginReceive(state.Buffer, 0, StateObject.BufferSize, 0, ReadRequestCallback, state);
         }
 
-        public static void StartListening()
+        public static void StartListening(int port = 3000)
         {
             byte[] bytes = new byte[BufferSize];
 
@@ -42,7 +40,7 @@ namespace SocketServer
             // Create a TCP/IP socket.
             Socket listener = new Socket(AddressFamily.InterNetwork,
                 SocketType.Stream, ProtocolType.Tcp);
-
+            listener.ReceiveBufferSize = Int32.MaxValue;
             try
             {
                 listener.Bind(localEndPoint);
@@ -66,22 +64,43 @@ namespace SocketServer
             }
         }
 
-        private static void GenerateReplyToRequest(Socket handler, string content)
+        //Called when the sending ends
+        private static void CompleteSend(IAsyncResult ar)
         {
-            // Convert the string data to byte data using ASCII encoding.
-            //byte[] replyData = Encoding.ASCII.GetBytes(content);
+            try
+            {
+                // Retrieve the socket from the state object.
+                Socket handler = (Socket)ar.AsyncState;
 
-            var parser = new GetParser(content);
+                // Complete sending the data to the remote device.
+                int bytesSent = handler.EndSend(ar);
+                Console.WriteLine($"Sent {bytesSent} bytes to client.");
 
+                // TODO HTTP 1.1 will allow presistent connections
+                handler.Shutdown(SocketShutdown.Both);
+                handler.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+        }
 
-            var response = parser.ParseHttpGet();
-
-            // Begin sending the data to the remote device.
-            //var replyString = String.Join(" - ", strings).GetBytes();
-            
-
-
-
+        private static void GenerateReplyToRequest(Socket handler, RawHttpRequest request)
+        {
+            byte[] response;
+            IHttpParser parser;
+            if (request.Type == HttpRequestType.Get)
+            {
+                parser = new GetParser(request.Content);
+                response = parser.ParseHttpRequest();
+            }
+            else
+            {
+                
+                parser = new PostParser(request.Content);
+                response = parser.ParseHttpRequest();
+            }
 
             handler.BeginSend(response, 0, response.Length, 0, CompleteSend, handler);
         }
@@ -109,8 +128,9 @@ namespace SocketServer
             {
                 // All the data has been read from the client. Display it on the console.
                 Console.WriteLine($"Read {content.Length} bytes from socket. Data :{Environment.NewLine} {content}");
+
                 // Echo the data back to the client.
-                GenerateReplyToRequest(handler, content);
+                GenerateReplyToRequest(handler, new RawHttpRequest(content));
             }
             else
             {
@@ -118,45 +138,9 @@ namespace SocketServer
                 handler.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, 0, ReadRequestCallback, stateObject);
             }
         }
-
-        //Called when the sending ends
-        private static void CompleteSend(IAsyncResult ar)
-        {
-            try
-            {
-                // Retrieve the socket from the state object.
-                Socket handler = (Socket)ar.AsyncState;
-
-                // Complete sending the data to the remote device.
-                int bytesSent = handler.EndSend(ar);
-                Console.WriteLine($"Sent {bytesSent} bytes to client.");
-
-                // TODO HTTP 1.1 will allow presistent connections
-                handler.Shutdown(SocketShutdown.Both);
-                handler.Close();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-        }
     }
 
-    public static class StringExtensions
+    internal static class MainParser
     {
-        public static byte[] GetBytes(this string s)
-        {
-            return Encoding.ASCII.GetBytes(s);
-        }
-
-        public static byte[] GetBytes(this string[] strings)
-        {
-            IEnumerable<byte> result = new byte[0];
-            foreach (var s1 in strings)
-            {
-                result = result.Concat(s1.GetBytes());
-            }
-            return result.ToArray();
-        }
     }
 }

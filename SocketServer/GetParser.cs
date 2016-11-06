@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace SocketServer
 {
-    public class GetParser
+    public class GetParser : IHttpParser
     {
         private readonly string _request;
 
@@ -23,7 +23,7 @@ namespace SocketServer
             httpRootDirectory = Path.Combine(solutionDirectory, "www");
         }
 
-        public byte[] ParseHttpGet()
+        public byte[] ParseHttpRequest()
         {
             var requestedDirectory = GetRequestTargetPage();
             byte[] response;
@@ -49,24 +49,25 @@ namespace SocketServer
 
         private byte[] CreateResponseBody(HttpStatusCode statusCode, byte[] fileContent = null)
         {
-            string body = $"HTTP/1.1 {(int)statusCode} {statusCode} {Environment.NewLine}";
+            string body = $"HTTP/1.1 {(int)statusCode} {statusCode} {Environment.NewLine} DATE:{DateTime.Now}{Environment.NewLine}";
 
             if (statusCode != HttpStatusCode.OK || fileContent == null)
             {
                 return body.GetBytes();
             }
 
+            body += Environment.NewLine;    // A blank line must be added between the data and headers
             List<byte> responseBytes = body.GetBytes().ToList();
             responseBytes.AddRange(fileContent);
 
-            // Check if the requested files are found, add the reposne state 200/404/...etc and the
-            // body, find any links to other files recursively
             return responseBytes.ToArray();
         }
 
         private HttpResult GetFileBytes(string path)
         {
             if (path == "/") path = "index.html";
+            else if (path.StartsWith("/")) path = path.Replace("/", String.Empty);
+
             if (httpRootDirectory == null) return new HttpResult { FileName = path, StatusCode = HttpStatusCode.NotFound };
 
             string fileAbsPath = Path.Combine(httpRootDirectory, path);
@@ -84,5 +85,10 @@ namespace SocketServer
             // Nothing requested, bad request format
             return new Maybe<string>(pageName);
         }
+    }
+
+    public interface IHttpParser
+    {
+        byte[] ParseHttpRequest();
     }
 }

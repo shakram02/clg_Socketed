@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text.RegularExpressions;
 
 namespace SocketServer
@@ -17,7 +18,7 @@ namespace SocketServer
         {
             var files = ExtractFileData();
 
-            throw new NotImplementedException();
+            return $"HTTP/1.1 {(int)HttpStatusCode.Created} {HttpStatusCode.Created}".GetBytes();
         }
 
         private List<HttpFileInfo> ExtractFileData()

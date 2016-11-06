@@ -15,8 +15,8 @@ namespace SocketServer
             _rawFileData = rawFileData;
             ParseRawFileData();
             FileContent = ParseFileContent();
-
-            File.WriteAllBytes(@"D:\server\eee" + DateTime.Now.ToString("dd-hh-mm-ss") + FileExtension, FileContent);
+            BinaryWriter b = new BinaryWriter(File.Open(@"D:\server\eee" + DateTime.Now.ToString("dd-hh-mm-ss") + FileExtension,FileMode.CreateNew));
+            b.Write(FileContent);
         }
 
         public byte[] FileContent { get; }

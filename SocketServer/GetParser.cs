@@ -8,6 +8,11 @@ using System.Text.RegularExpressions;
 
 namespace SocketServer
 {
+    public interface IHttpParser
+    {
+        byte[] ParseHttpRequest();
+    }
+
     public class GetParser : IHttpParser
     {
         private readonly string _request;
@@ -47,20 +52,14 @@ namespace SocketServer
             return response;
         }
 
-        private byte[] CreateResponseBody(HttpStatusCode statusCode, byte[] fileContent = null)
+        private Maybe<string> GetRequestTargetPage()
         {
-            string body = $"HTTP/1.1 {(int)statusCode} {statusCode} {Environment.NewLine} DATE:{DateTime.Now}{Environment.NewLine}";
+            var match = Regex.Match(_request, "(?<=GET\\s+).+(?=\\s+HTTP)");
+            if (match.Groups.Count == 0) return new Maybe<string>();
 
-            if (statusCode != HttpStatusCode.OK || fileContent == null)
-            {
-                return body.GetBytes();
-            }
-
-            body += Environment.NewLine;    // A blank line must be added between the data and headers
-            List<byte> responseBytes = body.GetBytes().ToList();
-            responseBytes.AddRange(fileContent);
-
-            return responseBytes.ToArray();
+            var pageName = match.Groups[0].ToString();
+            // Nothing requested, bad request format
+            return new Maybe<string>(pageName);
         }
 
         private HttpResult GetFileBytes(string path)
@@ -76,19 +75,20 @@ namespace SocketServer
             return new HttpResult { FileName = path, FileBytes = File.ReadAllBytes(fileAbsPath), StatusCode = HttpStatusCode.OK };
         }
 
-        private Maybe<string> GetRequestTargetPage()
+        private byte[] CreateResponseBody(HttpStatusCode statusCode, byte[] fileContent = null)
         {
-            var match = Regex.Match(_request, "(?<=GET\\s+).+(?=\\s+HTTP)");
-            if (match.Groups.Count == 0) return new Maybe<string>();
+            string body = $"HTTP/1.1 {(int)statusCode} {statusCode} {Environment.NewLine} DATE:{DateTime.Now}{Environment.NewLine}";
 
-            var pageName = match.Groups[0].ToString();
-            // Nothing requested, bad request format
-            return new Maybe<string>(pageName);
+            if (statusCode != HttpStatusCode.OK || fileContent == null)
+            {
+                return body.GetBytes();
+            }
+
+            body += Environment.NewLine;    // A blank line must be added between the data and headers
+            List<byte> responseBytes = body.GetBytes().ToList();
+            responseBytes.AddRange(fileContent);
+
+            return responseBytes.ToArray();
         }
-    }
-
-    public interface IHttpParser
-    {
-        byte[] ParseHttpRequest();
     }
 }

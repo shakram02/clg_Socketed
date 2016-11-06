@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace SocketServer
 {
@@ -15,36 +17,21 @@ namespace SocketServer
         private const int BufferSize = 1024;
         private const int MaxConnectionsInQueue = 10;
 
-        public static void AcceptRequestCallback(IAsyncResult ar)
-        {
-            // Signal the main thread to continue.
-            allDone.Set();
-
-            // Get the socket that handles the client request.
-            Socket listener = (Socket)ar.AsyncState;
-            Socket handler = listener.EndAccept(ar);
-
-            StateObject state = new StateObject { WorkSocket = handler };
-            handler.BeginReceive(state.Buffer, 0, StateObject.BufferSize, 0, ReadRequestCallback, state);
-        }
-
         public static void StartListening(int port = 3000)
         {
             byte[] bytes = new byte[BufferSize];
 
-            IPHostEntry ipHostInfo = Dns.Resolve(Dns.GetHostName());
+            IPHostEntry ipHostInfo = Dns.Resolve(Dns.GetHostName());    // Avoid use GetHostEntry to stay away from IPv6s
             IPAddress ipAddress = ipHostInfo.AddressList.First(entry => !entry.IsIPv6LinkLocal);
 
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
             Console.WriteLine($"Listening to:{localEndPoint}");
             // Create a TCP/IP socket.
-            Socket listener = new Socket(AddressFamily.InterNetwork,
-                SocketType.Stream, ProtocolType.Tcp);
-            listener.ReceiveBufferSize = Int32.MaxValue;
+            TcpListener listener = new TcpListener(localEndPoint);
+
             try
             {
-                listener.Bind(localEndPoint);
-                listener.Listen(MaxConnectionsInQueue);
+                listener.Start(MaxConnectionsInQueue);
 
                 while (true)
                 {
@@ -53,7 +40,12 @@ namespace SocketServer
 
                     Console.WriteLine("Waiting for a connection...");
 
-                    listener.BeginAccept(AcceptRequestCallback, listener);
+                    var task = listener.AcceptTcpClientAsync();
+                    
+                        Thread t = new Thread(async () => await HandleHttpRequest(task));
+                        t.Start();
+                    
+
                     // Wait until a connection is made before continuing.
                     allDone.WaitOne();
                 }
@@ -62,6 +54,50 @@ namespace SocketServer
             {
                 Console.WriteLine(e.ToString());
             }
+        }
+
+        private static async Task HandleHttpRequest(Task<TcpClient> task)
+        {
+            var client = await task;
+            allDone.Set();
+
+            NetworkStream stream = client.GetStream();
+
+            byte[] tempBuffer = new byte[BufferSize];
+            List<byte> buffer = new List<byte>(BufferSize);
+
+            while (stream.DataAvailable)
+            {
+                stream.Read(tempBuffer, 0, tempBuffer.Length);
+                buffer.AddRange(tempBuffer.TakeWhile(b => b != 0));
+            }
+            StringBuilder sb = new StringBuilder(Encoding.ASCII.GetString(buffer.ToArray()));
+            string content = sb.ToString().TrimEnd();
+
+            // All the data has been read from the client. Display it on the console.
+            Console.WriteLine($"Read {content.Length} bytes from socket. Data :{Environment.NewLine} {content}");
+
+            await GenerateReplyToRequest(client.GetStream(), new RawHttpRequest(content));
+            client.Close();
+        }
+
+        private static async Task GenerateReplyToRequest(NetworkStream networkStream, RawHttpRequest request)
+        {
+            // Echo the data back to the client.
+            byte[] response;
+            IHttpParser parser;
+            if (request.Type == HttpRequestType.Get)
+            {
+                parser = new GetParser(request.Content);
+                response = parser.ParseHttpRequest();
+            }
+            else
+            {
+                parser = new PostParser(request.Content);
+                response = parser.ParseHttpRequest();
+            }
+            //Console.WriteLine(Environment.NewLine + "Reply:" + Environment.NewLine + Encoding.ASCII.GetString(response));
+            await networkStream.WriteAsync(response, 0, response.Length);
         }
 
         //Called when the sending ends
@@ -85,62 +121,5 @@ namespace SocketServer
                 Console.WriteLine(e.ToString());
             }
         }
-
-        private static void GenerateReplyToRequest(Socket handler, RawHttpRequest request)
-        {
-            byte[] response;
-            IHttpParser parser;
-            if (request.Type == HttpRequestType.Get)
-            {
-                parser = new GetParser(request.Content);
-                response = parser.ParseHttpRequest();
-            }
-            else
-            {
-                
-                parser = new PostParser(request.Content);
-                response = parser.ParseHttpRequest();
-            }
-
-            handler.BeginSend(response, 0, response.Length, 0, CompleteSend, handler);
-        }
-
-        // Invoked when reading request is complete
-        private static void ReadRequestCallback(IAsyncResult ar)
-        {
-            String content = String.Empty;
-
-            // Retrieve the state object and the handler socket from the asynchronous state object.
-            StateObject stateObject = (StateObject)ar.AsyncState;
-            Socket handler = stateObject.WorkSocket;
-
-            // Read data from the client socket.
-            int bytesRead = handler.EndReceive(ar);
-
-            if (bytesRead <= 0) return;
-
-            stateObject.sb.Append(Encoding.ASCII.GetString(stateObject.Buffer, 0, bytesRead));
-
-            // Check for end-of-file tag. If it is not there, read more data.
-            content = stateObject.sb.ToString();
-
-            if (content.IndexOf($"{Environment.NewLine}", StringComparison.Ordinal) > -1)
-            {
-                // All the data has been read from the client. Display it on the console.
-                Console.WriteLine($"Read {content.Length} bytes from socket. Data :{Environment.NewLine} {content}");
-
-                // Echo the data back to the client.
-                GenerateReplyToRequest(handler, new RawHttpRequest(content));
-            }
-            else
-            {
-                // Not all data received. Get more.
-                handler.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, 0, ReadRequestCallback, stateObject);
-            }
-        }
-    }
-
-    internal static class MainParser
-    {
     }
 }

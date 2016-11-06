@@ -26,7 +26,7 @@ namespace SocketServer
             }
             else
             {
-                throw new NotImplementedException();
+                throw new InvalidOperationException("Undefined request type");
             }
         }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -12,13 +13,15 @@ namespace SocketServer
 {
     public static class SocketServer
     {
+        public const int ConnectionTimeOut = 3 * 1000;
+
         // Thread signal.
         public static ManualResetEvent allDone = new ManualResetEvent(false);
 
         private const int BufferSize = 1024;
         private const int MaxConnectionsInQueue = 10;
 
-        public static void StartListening(int port = 3000)
+        public static async Task StartListening(int port = 3000)
         {
             IPHostEntry ipHostInfo = Dns.Resolve(Dns.GetHostName());    // Avoid use GetHostEntry to stay away from IPv6s
             IPAddress ipAddress = ipHostInfo.AddressList.First(entry => !entry.IsIPv6LinkLocal);
@@ -39,11 +42,9 @@ namespace SocketServer
 
                     Console.WriteLine("[DEBUG]Waiting for a connection...");
 
-                    var task = listener.AcceptTcpClientAsync();
-
-                    Thread t = new Thread(async () => await HandleHttpRequest(task));
+                    var clientConnection = listener.AcceptTcpClientAsync();
+                    Thread t = new Thread(() => HandleHttpRequest(clientConnection).ConfigureAwait(false));
                     t.Start();
-
                     // Wait until a connection is made before continuing.
                     allDone.WaitOne();
                 }
@@ -58,13 +59,17 @@ namespace SocketServer
         {
             var client = await task;
             allDone.Set();  // Release semaphore for the threads
-            var netStream = client.GetStream();
-            StreamReader reader = new StreamReader(netStream, Encoding.ASCII, false, BufferSize, true);
-            StreamWriter writer = new StreamWriter(netStream, Encoding.ASCII, BufferSize, true);
+            client.ReceiveTimeout = ConnectionTimeOut;
+            client.SendTimeout = ConnectionTimeOut;
+
             char[] tempBuffer = new char[BufferSize];
             List<char> buffer = new List<char>(BufferSize);
+            Stopwatch s = new Stopwatch();
 
-            while (reader.Peek() > 0)
+            var netStream = client.GetStream();
+            StreamReader reader = new StreamReader(netStream, Encoding.ASCII, false, BufferSize, true);
+
+            while (client.Available > 0)
             {
                 reader.Read(tempBuffer, 0, tempBuffer.Length);
                 buffer.AddRange(tempBuffer.TakeWhile(b => b != 0));
@@ -72,7 +77,7 @@ namespace SocketServer
 
             string sb = new string(buffer.ToArray());
             string content = sb;
-
+            StreamWriter writer = new StreamWriter(netStream, Encoding.ASCII, BufferSize, true);
             // All the data has been read from the client. Display it on the console.
             Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}{Environment.NewLine}");
             Console.WriteLine($"[DEBUG]Read {content.Length} bytes from socket. Data :{Environment.NewLine} {content}");
@@ -80,6 +85,7 @@ namespace SocketServer
             GenerateReplyToRequest(client.Client, writer, new RawHttpRequest(content));
             reader.Dispose();
             writer.Dispose();
+
             client.Close();
         }
 

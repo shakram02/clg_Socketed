@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -44,6 +43,10 @@ namespace SocketClient
                     // Encode the data string into a byte array.
                     while (true)
                     {
+                        TcpClient client = new TcpClient
+                        {
+                            NoDelay = true
+                        };
                         char[] tempBuffer = new char[BufferSize];
                         List<char> from = new List<char>(BufferSize);
 
@@ -52,12 +55,7 @@ namespace SocketClient
                         if (message != null && message.ToLower() == "exit") break;
 
                         byte[] to = Encoding.ASCII.GetBytes(message + "\0");
-                        TcpClient client = new TcpClient
-                        {
-                            NoDelay = true,
-                            LingerState = new LingerOption(true, 10),
-                            ReceiveBufferSize = BufferSize
-                        };
+
                         if (!client.Connected)
                         {
                             client.Connect(remoteEndPoint);
@@ -73,7 +71,6 @@ namespace SocketClient
                             Console.WriteLine($"[DEBUG]Socket connected to {client.Client.LocalEndPoint}");
                         }
 
-
                         Console.WriteLine($"[DEBUG]Echoed test => {Encoding.ASCII.GetString(to)}");
                         using (StreamReader reader = new StreamReader(netStream, Encoding.ASCII, false, BufferSize, true))
                         {
@@ -84,7 +81,6 @@ namespace SocketClient
                             //var data = String.Concat(from).Trim();
                             Console.WriteLine("[DEBUG] Received:" + data);
                         }
-
                         client.Close();
                     }
                 }

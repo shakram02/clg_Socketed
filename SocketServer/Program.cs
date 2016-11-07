@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace SocketServer
 {
@@ -7,10 +8,15 @@ namespace SocketServer
         const int port = 3000;
         private static void Main(string[] args)
         {
-            SocketServer.StartListening(port);
 
+            AsyncMain().Wait();
             Console.WriteLine("Press ENTER to continue...");
             Console.ReadKey();
+        }
+
+        static async Task AsyncMain()
+        {
+            await SocketServer.StartListening(port);
         }
     }
 }

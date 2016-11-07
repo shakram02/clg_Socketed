@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -38,13 +39,13 @@ namespace SocketServer
                     // Set the event to nonsignaled state.
                     allDone.Reset();
 
-                    Console.WriteLine("Waiting for a connection...");
+                    Console.WriteLine("[DEBUG]Waiting for a connection...");
 
                     var task = listener.AcceptTcpClientAsync();
-                    
-                        Thread t = new Thread(async () => await HandleHttpRequest(task));
-                        t.Start();
-                    
+
+                    Thread t = new Thread(async () => await HandleHttpRequest(task));
+                    t.Start();
+
 
                     // Wait until a connection is made before continuing.
                     allDone.WaitOne();
@@ -59,29 +60,32 @@ namespace SocketServer
         private static async Task HandleHttpRequest(Task<TcpClient> task)
         {
             var client = await task;
-            allDone.Set();
+            allDone.Set();  // Release semaphore for the threads
 
             NetworkStream stream = client.GetStream();
 
             byte[] tempBuffer = new byte[BufferSize];
             List<byte> buffer = new List<byte>(BufferSize);
 
-            while (stream.DataAvailable)
+            while (stream.DataAvailable && stream.CanRead)
             {
                 stream.Read(tempBuffer, 0, tempBuffer.Length);
                 buffer.AddRange(tempBuffer.TakeWhile(b => b != 0));
             }
+
             StringBuilder sb = new StringBuilder(Encoding.ASCII.GetString(buffer.ToArray()));
             string content = sb.ToString().TrimEnd();
 
-            // All the data has been read from the client. Display it on the console.
-            Console.WriteLine($"Read {content.Length} bytes from socket. Data :{Environment.NewLine} {content}");
 
-            await GenerateReplyToRequest(client.GetStream(), new RawHttpRequest(content));
+            // All the data has been read from the client. Display it on the console.
+            Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}{Environment.NewLine}");
+            Console.WriteLine($"[DEBUG]Read {content.Length} bytes from socket. Data :{Environment.NewLine} {content}");
+
+            GenerateReplyToRequest(client.GetStream(), new RawHttpRequest(content));
             client.Close();
         }
 
-        private static async Task GenerateReplyToRequest(NetworkStream networkStream, RawHttpRequest request)
+        private static void GenerateReplyToRequest(NetworkStream networkStream, RawHttpRequest request)
         {
             // Echo the data back to the client.
             byte[] response;
@@ -91,13 +95,18 @@ namespace SocketServer
                 parser = new GetParser(request.Content);
                 response = parser.ParseHttpRequest();
             }
-            else
+            else if (request.Type == HttpRequestType.Post)
             {
                 parser = new PostParser(request.Content);
                 response = parser.ParseHttpRequest();
             }
+            else
+            {
+                Console.WriteLine("[DEBUG]TEST Message received sucessfully...");
+                response = "[REPLY]Echo Complete...".GetBytes();
+            }
             //Console.WriteLine(Environment.NewLine + "Reply:" + Environment.NewLine + Encoding.ASCII.GetString(response));
-            await networkStream.WriteAsync(response, 0, response.Length);
+            networkStream.Write(response, 0, response.Length);
         }
 
         //Called when the sending ends

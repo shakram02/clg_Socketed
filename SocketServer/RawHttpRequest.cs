@@ -6,7 +6,8 @@ namespace SocketServer
     public enum HttpRequestType
     {
         Get,
-        Post
+        Post,
+        Test
     }
 
     public class RawHttpRequest
@@ -26,7 +27,7 @@ namespace SocketServer
             }
             else
             {
-                throw new InvalidOperationException("Undefined request type");
+                Type = HttpRequestType.Test;
             }
         }
 

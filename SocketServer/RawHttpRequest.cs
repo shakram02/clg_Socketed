@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
 
 namespace SocketServer
 {
@@ -12,10 +13,11 @@ namespace SocketServer
 
     public class RawHttpRequest
     {
-        public RawHttpRequest(string content)
+        public RawHttpRequest(byte[] content)
         {
             Content = content;
-            string requestType = String.Concat(content.TrimStart(' ').TakeWhile(ch => ch != ' ')).ToLower();
+            string firstRequestLine = Encoding.ASCII.GetString(content.Split(Environment.NewLine.GetBytes(), 1)[0]);
+            string requestType = firstRequestLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0].ToLower();
 
             if (requestType == "get")
             {
@@ -31,7 +33,7 @@ namespace SocketServer
             }
         }
 
-        public string Content { get; }
+        public byte[] Content { get; }
         public HttpRequestType Type { get; }
     }
 }

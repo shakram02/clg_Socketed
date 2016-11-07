@@ -2,59 +2,58 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using MimeTypes;
 
 namespace SocketServer
 {
-    internal class HttpFileInfo
+    /// <summary>
+    /// Represents information about a file requested in an HTTP request
+    /// </summary>
+    public class HttpFile
     {
-        private readonly IList<string> _rawFileData;    // State object
+        private readonly byte[] _rawFileHeader;    // State object
         const int ByteBufferSize = 256;
-        public HttpFileInfo(IList<string> rawFileData)
+        public HttpFile(byte[] rawFileHeader, byte[] rawFileContent)
         {
-            _rawFileData = rawFileData;
+            _rawFileHeader = rawFileHeader;
             ParseRawFileData();
-            FileContent = ParseFileContent();
-            File.WriteAllBytes(@"D:\server\eee" + DateTime.Now.ToString("dd-hh-mm-ss") + FileExtension, FileContent);
+            FileContent = rawFileContent;
         }
 
+        /// <summary>
+        /// Byte array containing the file content
+        /// </summary>
         public byte[] FileContent { get; }
-
+        /// <summary>
+        /// Full path of the file
+        /// </summary>
         public string FileName { private set; get; }
-
+        /// <summary>
+        /// File extension
+        /// </summary>
         public string FileExtension { private set; get; }
 
+        /// <summary>
+        /// Extracts information about the file from the incoming HTTP POST request
+        /// </summary>
         private void ParseRawFileData()
         {
-            List<string> fileData = new List<string>(8);
+            string fileHeader = Encoding.ASCII.GetString(_rawFileHeader);
+            var matches = Regex.Matches(fileHeader, "(?<=\")(.*?)(?=\")");
+            var fileName = matches[matches.Count - 1].Value;
 
-            int i = 0;
-            string mimeType = String.Empty;
-            while (_rawFileData[i] != String.Empty)
+            if (!String.IsNullOrEmpty(fileName) && matches.Count > 1)
             {
-                string line = _rawFileData[i];
-                fileData.Add(line);
-                _rawFileData.RemoveAt(i);
-
-                if (line.StartsWith("Content-Type:"))
-                {
-                    mimeType = line.Replace("Content-Type:", String.Empty).Trim();
-                }
+                FileName = fileName;
+                FileExtension = Path.GetExtension(FileName);
             }
-            FileName = fileData[0];
-            FileExtension = MimeTypeMap.GetExtension(mimeType == String.Empty ? "text/plain" : mimeType);
-        }
-
-        private byte[] ParseFileContent()
-        {
-            if (_rawFileData.Count == 0) throw new InvalidOperationException("Malformed request");
-            if (_rawFileData[0] == String.Empty) _rawFileData.RemoveAt(0);
-            List<byte> bytes = new List<byte>(ByteBufferSize);
-
-            bytes.AddRange(_rawFileData.SelectMany(s => s, (s, c) => (byte)c));
-
-            //string content = string.Concat(_rawFileData);
-            return bytes.ToArray();
+            else
+            {
+                FileExtension = ".txt";
+                FileName = !String.IsNullOrEmpty(fileName) ? fileName : DateTime.Now.ToString("yy-MM-dd-hh-mm-ss");
+            }
         }
     }
 }

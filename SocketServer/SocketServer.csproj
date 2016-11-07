@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="GetParser.cs" />
     <Compile Include="HttpFileInfo.cs" />
+    <Compile Include="HttpResponse.cs" />
     <Compile Include="HttpResult.cs" />
     <Compile Include="PostParser.cs" />
     <Compile Include="Program.cs" />

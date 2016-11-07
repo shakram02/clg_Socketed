@@ -1,8 +1,6 @@
 ﻿using Sharp.Functional;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -10,13 +8,12 @@ namespace SocketServer
 {
     public interface IHttpParser
     {
-        byte[] ParseHttpRequest();
+        HttpResponse ParseHttpRequest();
     }
 
     public class GetParser : IHttpParser
     {
         private readonly string _request;
-
         private readonly string httpRootDirectory;
 
         public GetParser(string request)
@@ -28,10 +25,10 @@ namespace SocketServer
             httpRootDirectory = Path.Combine(solutionDirectory, "www");
         }
 
-        public byte[] ParseHttpRequest()
+        public HttpResponse ParseHttpRequest()
         {
             var requestedDirectory = GetRequestTargetPage();
-            byte[] response;
+            HttpResponse response;
 
             // Bad request recieved, the request is on an invalid format
             if (requestedDirectory.HasNoValue)
@@ -47,18 +44,20 @@ namespace SocketServer
             }
             else
             {
-                response = CreateResponseBody(requrestedFilesResults.StatusCode, requrestedFilesResults.FileBytes);
+                response = CreateResponseBody(requrestedFilesResults.StatusCode, requrestedFilesResults.FileName);
             }
             return response;
         }
 
         private Maybe<string> GetRequestTargetPage()
         {
-            var match = Regex.Match(_request, "(?<=GET\\s+).+(?=\\s+HTTP)");
-            if (match.Groups.Count == 0) return new Maybe<string>();
+            // Get the requested file name from the first line
+            var match = Regex.Match(_request, "(?<=GET\\s+).+(?=\\s+HTTP)").Value;
 
-            var pageName = match.Groups[0].ToString();
             // Nothing requested, bad request format
+            if (String.IsNullOrEmpty(match)) return new Maybe<string>();
+
+            var pageName = match;
             return new Maybe<string>(pageName);
         }
 
@@ -72,23 +71,20 @@ namespace SocketServer
             string fileAbsPath = Path.Combine(httpRootDirectory, path);
             if (!File.Exists(fileAbsPath)) return new HttpResult { FileName = path, StatusCode = HttpStatusCode.NotFound };
 
-            return new HttpResult { FileName = path, FileBytes = File.ReadAllBytes(fileAbsPath), StatusCode = HttpStatusCode.OK };
+            return new HttpResult
+            {
+                FileName = fileAbsPath,
+                StatusCode = HttpStatusCode.OK
+            };
         }
 
-        private byte[] CreateResponseBody(HttpStatusCode statusCode, byte[] fileContent = null)
+        private HttpResponse CreateResponseBody(HttpStatusCode statusCode, string filePath = null)
         {
-            string body = $"HTTP/1.1 {(int)statusCode} {statusCode} {Environment.NewLine} DATE:{DateTime.Now}{Environment.NewLine}";
-
-            if (statusCode != HttpStatusCode.OK || fileContent == null)
+            if (statusCode != HttpStatusCode.OK || filePath == null)
             {
-                return body.GetBytes();
+                return new HttpResponse(statusCode);
             }
-
-            body += Environment.NewLine;    // A blank line must be added between the data and headers
-            List<byte> responseBytes = body.GetBytes().ToList();
-            responseBytes.AddRange(fileContent);
-
-            return responseBytes.ToArray();
+            return new HttpResponse(statusCode, filePath);
         }
     }
 }

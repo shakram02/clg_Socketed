@@ -4,7 +4,7 @@ namespace SocketServer
 {
     internal class HttpResult
     {
-        public byte[] FileBytes { get; set; }
+        public char[] FileBytes { get; set; }
         public string FileName { get; set; }
         public HttpStatusCode StatusCode { get; set; }
     }

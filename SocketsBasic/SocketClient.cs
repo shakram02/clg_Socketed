@@ -56,8 +56,7 @@ namespace SocketClient
                         {
                             NoDelay = true,
                             LingerState = new LingerOption(true, 10),
-                            ReceiveBufferSize = BufferSize,
-                            ReceiveTimeout = 2000
+                            ReceiveBufferSize = BufferSize
                         };
                         if (!client.Connected)
                         {
@@ -76,7 +75,7 @@ namespace SocketClient
 
 
                         Console.WriteLine($"[DEBUG]Echoed test => {Encoding.ASCII.GetString(to)}");
-                        using (StreamReader reader = new StreamReader(netStream))
+                        using (StreamReader reader = new StreamReader(netStream, Encoding.ASCII, false, BufferSize, true))
                         {
                             reader.Read(tempBuffer, 0, BufferSize);
                             from.AddRange(tempBuffer);

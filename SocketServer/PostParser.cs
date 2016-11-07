@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace SocketServer
 {
-    public class PostParser 
+    public class PostParser : IHttpParser
     {
         private string content;
 
@@ -14,11 +14,11 @@ namespace SocketServer
             this.content = content;
         }
 
-        public char[] ParseHttpRequest()
+        public HttpResponse ParseHttpRequest()
         {
             var files = ExtractFileData();
 
-            return $"HTTP/1.1 {(int)HttpStatusCode.Created} {HttpStatusCode.Created}".ToCharArray();
+            return new HttpResponse(HttpStatusCode.Created);
         }
 
         private List<HttpFileInfo> ExtractFileData()

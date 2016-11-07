@@ -9,13 +9,13 @@ namespace SocketServer
     internal class HttpFileInfo
     {
         private readonly IList<string> _rawFileData;    // State object
-
+        const int ByteBufferSize = 256;
         public HttpFileInfo(IList<string> rawFileData)
         {
             _rawFileData = rawFileData;
             ParseRawFileData();
             FileContent = ParseFileContent();
-            File.WriteAllBytes(@"D:\server\eee" + DateTime.Now.ToString("dd-hh-mm-ss") + FileExtension,FileContent);
+            File.WriteAllBytes(@"D:\server\eee" + DateTime.Now.ToString("dd-hh-mm-ss") + FileExtension, FileContent);
         }
 
         public byte[] FileContent { get; }
@@ -49,9 +49,12 @@ namespace SocketServer
         {
             if (_rawFileData.Count == 0) throw new InvalidOperationException("Malformed request");
             if (_rawFileData[0] == String.Empty) _rawFileData.RemoveAt(0);
+            List<byte> bytes = new List<byte>(ByteBufferSize);
 
-            string content = string.Concat(_rawFileData);
-            return content.GetBytes();
+            bytes.AddRange(_rawFileData.SelectMany(s => s, (s, c) => (byte)c));
+
+            //string content = string.Concat(_rawFileData);
+            return bytes.ToArray();
         }
     }
 }

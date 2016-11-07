@@ -93,11 +93,11 @@ namespace SocketServer
                 parser = new GetParser(request.Content);
                 response = parser.ParseHttpRequest();
             }
-            //else if (request.Type == HttpRequestType.Post)
-            //{
-            //    parser = new PostParser(request.Content);
-            //    response = parser.ParseHttpRequest();
-            //}
+            else if (request.Type == HttpRequestType.Post)
+            {
+                parser = new PostParser(request.Content);
+                response = parser.ParseHttpRequest();
+            }
             else
             {
                 Console.WriteLine("[DEBUG]TEST Message received sucessfully...");
@@ -112,28 +112,6 @@ namespace SocketServer
             else
             {
                 clientSocket.SendFile(response.RequestedFile, response.ResponseHeader.GetBytes(), null, TransmitFileOptions.UseDefaultWorkerThread);
-            }
-        }
-
-        //Called when the sending ends
-        private static void CompleteSend(IAsyncResult ar)
-        {
-            try
-            {
-                // Retrieve the socket from the state object.
-                Socket handler = (Socket)ar.AsyncState;
-
-                // Complete sending the data to the remote device.
-                int bytesSent = handler.EndSend(ar);
-                Console.WriteLine($"Sent {bytesSent} bytes to client.");
-
-                // TODO HTTP 1.1 will allow presistent connections
-                handler.Shutdown(SocketShutdown.Both);
-                handler.Close();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
             }
         }
     }

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -36,6 +34,7 @@ namespace SocketServer
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
             Console.WriteLine($"Listening to:{localEndPoint}");
             // Create a TCP/IP socket.
+            
             TcpListener listener = new TcpListener(localEndPoint);
             listener.Server.ReceiveTimeout = 10 * 1000;
             listener.Server.ReceiveBufferSize = BufferSize * BufferSize;

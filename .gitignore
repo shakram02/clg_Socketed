@@ -7,6 +7,8 @@
 *.userosscache
 *.sln.docstates
 
+www/*
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -243,3 +245,8 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+/Socket Server VSdoc
+/SocketClient.docx
+/SocketsBasic.sln.vsdoc
+/SocketServer/SocketServer.vsdoc
+/SocketsBasic/SocketClient.vsdoc

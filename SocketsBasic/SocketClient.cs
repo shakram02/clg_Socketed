@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -45,7 +46,8 @@ namespace SocketClient
                     {
                         TcpClient client = new TcpClient
                         {
-                            NoDelay = true
+                            NoDelay = true,
+                            SendTimeout = 1024 * 1024
                         };
                         char[] tempBuffer = new char[BufferSize];
                         List<char> from = new List<char>(BufferSize);
@@ -62,9 +64,20 @@ namespace SocketClient
                             Console.WriteLine($"[DEBUG]Socket connected to {client.Client.LocalEndPoint}");
                         }
                         var netStream = client.GetStream();
+                        if (message.StartsWith("POST"))
+                        {
+                            var filePath = Regex.Match(message, "(?<=POST\\s+).+(?=\\s+HTTP)").Value;
+                            var postCreator = new PostCreator(filePath, ipAddress);
+                            var requestBytes = postCreator.CreatePostRequest();
+                            netStream.Write(requestBytes, 0, requestBytes.Length);
 
-                        //SendDataToServer(to, netStream);
-                        netStream.Write(to, 0, to.Length);
+                        }
+                        else
+                        {
+                            netStream.Write(to, 0, to.Length);
+                        }
+
+
                         if (!client.Connected)
                         {
                             client.Connect(remoteEndPoint);
@@ -72,6 +85,11 @@ namespace SocketClient
                         }
 
                         Console.WriteLine($"[DEBUG]Echoed test => {Encoding.ASCII.GetString(to)}");
+                        if (client.Available == 0)
+                        {
+                            client.Close();
+                            continue;
+                        }
                         using (StreamReader reader = new StreamReader(netStream, Encoding.ASCII, false, BufferSize, true))
                         {
                             reader.Read(tempBuffer, 0, BufferSize);

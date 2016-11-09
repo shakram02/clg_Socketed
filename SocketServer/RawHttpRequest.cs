@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
 
 namespace SocketServer
@@ -10,7 +9,9 @@ namespace SocketServer
         Post,
         Test
     }
-
+    /// <summary>
+    /// Incoming http request
+    /// </summary>
     public class RawHttpRequest
     {
         public RawHttpRequest(byte[] content)

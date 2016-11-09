@@ -6,20 +6,20 @@ using System.IO;
 
 namespace SocketServer
 {
-    /// <summary>
-    /// Handles operations with hard disk
-    /// </summary>
+    /// <summary>Handles operations with hard disk</summary>
     internal static class FileManager
     {
+        private const string WritingDirectory = @"D:\server";
+
         static FileManager()
         {
-            WritingDirectory = @"D:\server";
             if (!Directory.Exists(WritingDirectory))
                 Directory.CreateDirectory(WritingDirectory);
         }
 
-        private static string WritingDirectory { get; set; }
-
+        /// <summary>Writes text or image files to hard disk</summary>
+        /// <param name="filesPosted"></param>
+        /// <returns></returns>
         public static List<bool> WriteFilesToDisk(List<HttpFile> filesPosted)
         {
             List<bool> checks = new List<bool>();
@@ -33,7 +33,8 @@ namespace SocketServer
                     {
                         try
                         {
-                            image.Save(Path.Combine(WritingDirectory, postedFile.FileName), ImageFormat.Png);  // Or Png
+                            // Extra: if the file already exists append the date to its name
+                            image.Save(Path.Combine(WritingDirectory, postedFile.FileName), ImageFormat.Jpeg);  // Or Png
                             checks.Add(true);
                         }
                         catch (Exception)
@@ -46,7 +47,7 @@ namespace SocketServer
                 {
                     try
                     {
-                        File.WriteAllBytes(postedFile.FileName, postedFile.FileContent);
+                        File.WriteAllBytes(Path.Combine(WritingDirectory, postedFile.FileName), postedFile.FileContent);
                         checks.Add(true);
                     }
                     catch (Exception)

@@ -9,13 +9,15 @@ namespace SocketServer
 {
     public class PostParser : IHttpParser
     {
-        private byte[] _content;
+        private readonly byte[] _content;
 
         public PostParser(byte[] content)
         {
             this._content = content;
         }
 
+        /// <summary>Returns the result of the POST request after processing it</summary>
+        /// <returns></returns>
         public HttpResponse ParseHttpRequest()
         {
             var files = ExtractFileData();
@@ -25,6 +27,8 @@ namespace SocketServer
             return response;
         }
 
+        /// <summary>Parses Raw data from the http request into a more appropriate format</summary>
+        /// <returns>List of files in the request</returns>
         private List<HttpFile> ExtractFileData()
         {
             byte[] doubleBlankLine = Encoding.ASCII.GetBytes($"{Environment.NewLine}{Environment.NewLine}");
@@ -57,30 +61,6 @@ namespace SocketServer
                 infos.Add(new HttpFile(header, filteredRawFileContent));
             }
 
-            //for (int i = 0; i < cont.Length; i++)
-            //{
-            //    if (cont[i] != (contentBoundary))
-            //    {
-            //        continue;
-            //    }
-
-            //    while (i < cont.Length)
-            //    {
-            //        if (cont[i] != contentBoundary)
-            //            fileData.Add(cont[i]);
-
-            //        if (i + 1 >= cont.Length || cont[i + 1] == contentBoundary) break;
-            //        i++;
-            //    }
-
-            //    if (fileData.Count > 0)
-            //    {
-            //        // Extract each data rows into one HttpFileInfo object, then clear the fileData
-            //        // list to prepare for the next data chunk
-            //        infos.Add(new HttpFile(fileData));
-            //        fileData.Clear();
-            //    }
-            //}
             return new List<HttpFile>(infos);
         }
     }

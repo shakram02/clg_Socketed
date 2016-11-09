@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SocketServer
 {
@@ -22,7 +19,13 @@ namespace SocketServer
             }
             throw new Exception("not found");
         }
-
+        /// <summary>
+        /// Splits the current byte[] into multiple array using a separator
+        /// </summary>
+        /// <param name="source">Source array</param>
+        /// <param name="separator">Separator array for delimiting</param>
+        /// <param name="partCount">Number of desired parts, 0 for all available parts</param>
+        /// <returns></returns>
         public static byte[][] Split(this byte[] source, byte[] separator, int partCount = 0)
         {
             var parts = new List<byte[]>();

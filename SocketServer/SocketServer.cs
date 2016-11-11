@@ -34,7 +34,7 @@ namespace SocketServer
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
             Console.WriteLine($"Listening to:{localEndPoint}");
             // Create a TCP/IP socket.
-            
+
             TcpListener listener = new TcpListener(localEndPoint);
             listener.Server.ReceiveTimeout = 10 * 1000;
             listener.Server.ReceiveBufferSize = BufferSize * BufferSize;
@@ -49,11 +49,8 @@ namespace SocketServer
 
                     Console.WriteLine("[DEBUG]Waiting for a connection...");
 
-                    var clientConnection = listener.AcceptTcpClientAsync();
-                    Thread t = new Thread(() => HandleHttpRequest(clientConnection).ConfigureAwait(false));
-                    t.Start();
-                    // Wait until a connection is made before continuing.
-                    allDone.WaitOne();
+                    var clientConnection = await listener.AcceptTcpClientAsync();
+                    await HandleHttpRequest(clientConnection).ConfigureAwait(false);
                 }
             }
             catch (Exception e)
@@ -65,12 +62,11 @@ namespace SocketServer
         /// <summary>
         /// Receives a task that resuslts in a TcpClient which will be used to handle requests
         /// </summary>
-        /// <param name="task">Async task that completes when a connection is available</param>
+        /// <param name="client">TcpClient creating the request</param>
         /// <returns></returns>
-        private static async Task HandleHttpRequest(Task<TcpClient> task)
+        private static async Task HandleHttpRequest(TcpClient client)
         {
-            var client = await task;
-            allDone.Set();  // Release semaphore for the threads
+
             client.ReceiveTimeout = ConnectionTimeOut;
             client.SendTimeout = ConnectionTimeOut;
 
@@ -85,15 +81,15 @@ namespace SocketServer
                 return;
             }
 
-            StreamWriter writer = new StreamWriter(netStream, Encoding.ASCII, BufferSize, true);
-            
+            //StreamWriter writer = new StreamWriter(netStream, Encoding.ASCII, BufferSize, true);
+
             // All the data has been read from the client. Display it on the console.
-            Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}{Environment.NewLine}");
+            Console.WriteLine($"{Environment.NewLine}");
             Console.WriteLine($"[DEBUG]Read {tempBuffer.Length} bytes from socket.");
             Console.WriteLine(Environment.NewLine);
 
-            GenerateReplyToRequest(client.Client, writer, new RawHttpRequest(tempBuffer));
-            writer.Dispose();
+            await GenerateReplyToRequest(client.Client, netStream, new RawHttpRequest(tempBuffer));
+            //writer.Dispose();
 
             client.Close();
         }
@@ -104,7 +100,7 @@ namespace SocketServer
         /// <param name="clientSocket"></param>
         /// <param name="networkStreamWriter"></param>
         /// <param name="request"></param>
-        private static void GenerateReplyToRequest(Socket clientSocket, StreamWriter networkStreamWriter, RawHttpRequest request)
+        private static async Task GenerateReplyToRequest(Socket clientSocket, NetworkStream networkStreamWriter, RawHttpRequest request)
         {
             // Echo the data back to the client.
             HttpResponse response;
@@ -123,16 +119,19 @@ namespace SocketServer
             {
                 Console.WriteLine("[DEBUG]TEST Message received sucessfully...");
                 var testReply = "[REPLY]Echo Complete...".ToCharArray();
-                networkStreamWriter.Write(testReply, 0, testReply.Length);
+                //networkStreamWriter.Write(testReply, 0, testReply.Length);
                 return;
             }
             if (response.RequestedFile == String.Empty)
             {
-                networkStreamWriter.Write(response.ResponseHeader.ToCharArray(), 0, response.ResponseHeader.Length);
+                await networkStreamWriter.WriteAsync(response.ResponseHeader.GetBytes(), 0, response.ResponseHeader.Length);
             }
             else
             {
-                clientSocket.SendFile(response.RequestedFile, response.ResponseHeader.GetBytes(), null, TransmitFileOptions.UseDefaultWorkerThread);
+                byte[] fileBytes = File.ReadAllBytes(response.RequestedFile);
+                byte[] fullResponse = response.ResponseHeader.GetBytes().Concat(fileBytes).ToArray();
+
+                await networkStreamWriter.WriteAsync(fullResponse, 0, fullResponse.Length);
             }
         }
     }

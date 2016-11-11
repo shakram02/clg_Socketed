@@ -22,9 +22,12 @@ namespace SocketServer
         {
             _request = request;
 
-            string solutionDirectory = Path.GetDirectoryName(Path.GetDirectoryName(Environment.CurrentDirectory));
-            if (solutionDirectory == null) throw new InvalidOperationException("Root folder can't be found");
-            httpRootDirectory = Path.Combine(solutionDirectory, "www");
+            if (ProjectConstants.SolutionDirectory == null) throw new InvalidOperationException("Root folder can't be found");
+
+            httpRootDirectory = Path.Combine(ProjectConstants.SolutionDirectory, ProjectConstants.RootDirectory);
+
+            if (!Directory.Exists(httpRootDirectory))
+                Directory.CreateDirectory(httpRootDirectory);
         }
 
         /// <summary>Parses the request then returns its result</summary>
@@ -91,7 +94,8 @@ namespace SocketServer
             {
                 return new HttpResponse(statusCode);
             }
-            return new HttpResponse(statusCode, filePath);
+            byte[] fileBytes = File.ReadAllBytes(filePath);
+            return new HttpResponse(statusCode, fileBytes);
         }
     }
 }

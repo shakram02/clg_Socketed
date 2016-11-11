@@ -1,9 +1,7 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -51,6 +49,7 @@ namespace SocketServer
 
                     var clientConnection = await listener.AcceptTcpClientAsync();
                     await HandleHttpRequest(clientConnection).ConfigureAwait(false);
+                    Console.WriteLine();
                 }
             }
             catch (Exception e)
@@ -81,15 +80,10 @@ namespace SocketServer
                 return;
             }
 
-            //StreamWriter writer = new StreamWriter(netStream, Encoding.ASCII, BufferSize, true);
-
             // All the data has been read from the client. Display it on the console.
-            Console.WriteLine($"{Environment.NewLine}");
             Console.WriteLine($"[DEBUG]Read {tempBuffer.Length} bytes from socket.");
-            Console.WriteLine(Environment.NewLine);
 
-            await GenerateReplyToRequest(client.Client, netStream, new RawHttpRequest(tempBuffer));
-            //writer.Dispose();
+            await GenerateReplyToRequest(netStream, new RawHttpRequest(tempBuffer));
 
             client.Close();
         }
@@ -97,10 +91,9 @@ namespace SocketServer
         /// <summary>
         /// Generates reply using the socket stream
         /// </summary>
-        /// <param name="clientSocket"></param>
         /// <param name="networkStreamWriter"></param>
         /// <param name="request"></param>
-        private static async Task GenerateReplyToRequest(Socket clientSocket, NetworkStream networkStreamWriter, RawHttpRequest request)
+        private static async Task GenerateReplyToRequest(NetworkStream networkStreamWriter, RawHttpRequest request)
         {
             // Echo the data back to the client.
             HttpResponse response;
@@ -118,21 +111,14 @@ namespace SocketServer
             else
             {
                 Console.WriteLine("[DEBUG]TEST Message received sucessfully...");
-                var testReply = "[REPLY]Echo Complete...".ToCharArray();
-                //networkStreamWriter.Write(testReply, 0, testReply.Length);
+                var testReply = "[REPLY]Echo Complete...".GetBytes();
+                await networkStreamWriter.WriteAsync(testReply, 0, testReply.Length);
                 return;
             }
-            if (response.RequestedFile == String.Empty)
-            {
-                await networkStreamWriter.WriteAsync(response.ResponseHeader.GetBytes(), 0, response.ResponseHeader.Length);
-            }
-            else
-            {
-                byte[] fileBytes = File.ReadAllBytes(response.RequestedFile);
-                byte[] fullResponse = response.ResponseHeader.GetBytes().Concat(fileBytes).ToArray();
+            Console.WriteLine("Response:" + response.StatusCode);
+            byte[] reply = response.Construct();
+            await networkStreamWriter.WriteAsync(reply, 0, reply.Length);
 
-                await networkStreamWriter.WriteAsync(fullResponse, 0, fullResponse.Length);
-            }
         }
     }
 }

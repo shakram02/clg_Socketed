@@ -5,20 +5,6 @@ namespace SocketServer
 {
     public static class ByteArrayExtensions
     {
-        static byte[] SeparateAndGetLast(byte[] source, byte[] separator)
-        {
-            for (var i = 0; i < source.Length; ++i)
-            {
-                if (Equals(source, separator, i))
-                {
-                    var index = i + separator.Length;
-                    var part = new byte[source.Length - index];
-                    Array.Copy(source, index, part, 0, part.Length);
-                    return part;
-                }
-            }
-            throw new Exception("not found");
-        }
         /// <summary>
         /// Splits the current byte[] into multiple array using a separator
         /// </summary>

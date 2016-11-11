@@ -56,13 +56,12 @@
     <Compile Include="GetParser.cs" />
     <Compile Include="HttpFileInfo.cs" />
     <Compile Include="HttpResponse.cs" />
-    <Compile Include="HttpResult.cs" />
     <Compile Include="PostParser.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="ProjectConstants.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RawHttpRequest.cs" />
     <Compile Include="SocketServer.cs" />
-    <Compile Include="StateObject.cs" />
     <Compile Include="StringExtensions.cs" />
   </ItemGroup>
   <ItemGroup>

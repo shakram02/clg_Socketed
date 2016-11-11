@@ -13,7 +13,7 @@ namespace SocketServer
 
         public PostParser(byte[] content)
         {
-            this._content = content;
+            _content = content;
         }
 
         /// <summary>Returns the result of the POST request after processing it</summary>
